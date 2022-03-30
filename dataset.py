@@ -49,6 +49,44 @@ class Sample:
   def __init__(self, data:list):
     #@data: [id, file_name, height, width, area, [segmentation]]
     self.data = data
+  @staticmethod
+  def preprocess_image(image):
+    '''
+    @image: read with cv2, [h, w, 3]
+    '''
+    return (image.astype(dtype=np.float32).transpose(2, 0, 1) / (255.0 / 2)) - 1.0
+
+  @staticmethod
+  def draw_segmentation(image:np.ndarray, label:np.ndarray, threshold=0.5):
+    '''
+    @image: h, w, 3
+    @label: h, w
+    '''
+    x = label > threshold
+    image[x, 0] = 255
+    print("num of segmentation is %d" %x.sum())
+    return image
+  @staticmethod
+  def get_new_size(old_size, new_size):
+    '''
+    @return: size, np.ndarray
+    get the proper size that old_size => new_size
+    it follows the rull that: size[0] <= new_size[0] and size[1] <= new_size[1]
+    at the same time, at least one is equal
+    '''
+    if not isinstance(new_size, np.ndarray):
+      new_size = np.array(new_size)
+    if not isinstance(old_size, np.ndarray):
+      old_size = np.array(old_size)
+
+    scale = new_size / old_size
+    if (scale[0] < scale[1]):
+      scale[1] = scale[0]
+    else:
+      scale[0] = scale[1]
+    size = (scale[0] * old_size.astype(scale.dtype)).astype(np.int32)
+    return size
+
   def index(self):
     return self.data[0]
   def file_name(self):
@@ -61,6 +99,10 @@ class Sample:
   def segmentation(self):
     return self.data[5:]
   def create_label(self, _new_size, root):
+    '''
+    @_new_size:(resize current image to (width, height))
+    @root: path to image
+    '''
     path = os.path.join(root, self.file_name())
     image = cv2.imread(path, cv2.IMREAD_COLOR)
 
@@ -98,7 +140,7 @@ class Sample:
     # _image = image.copy()
     # fillPoly(segmentation, _image, color=(1.0, 1.0, 1.0))
 
-    image = (image.astype(dtype=np.float32).transpose(2, 0, 1) / (255.0 / 2)) - 1.0
+    image = Sample.preprocess_image(image)
     return image, np.expand_dims(label, axis=0).astype(np.float32)
 
 
@@ -174,3 +216,11 @@ def loadDataset(path:str):
   cost = time.time() - begin
   print("Load dataset cost time %f sec" %cost)
   return dataset
+
+def getImagesName(root:str):
+  '''
+  @root:path to images
+  @return:[names]
+  '''
+  return os.listdir(root)
+

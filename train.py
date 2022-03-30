@@ -8,7 +8,7 @@ import random
 
 from dataset import *
 from models.model import *
-import loss
+import loss as Loss
 
 
 FILE = Path(__file__).resolve()
@@ -244,7 +244,7 @@ def main():
     model = torch.load(args.weights, map_location = device)
 
   model = model.to(device)
-  compute_loss = loss.MultipleLoss()
+  compute_loss = Loss.MultipleLoss()
 
   trset, teset,ddd = torch.utils.data.random_split(
     dataset,
@@ -307,8 +307,6 @@ def main():
     train_loss.write(runtime_path + '/result.csv')
     test_loss.write(runtime_path + '/result.csv')
     torch.save(model, os.path.join(runtime_path, 'last.pt'))
-
-
 
 main()
 
