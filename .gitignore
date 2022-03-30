@@ -1,6 +1,11 @@
 *.pt
 
+#idea and python
 __pycache__/*
 */__pycache__/
 .idea/
 venv
+
+#runtime files
+run/*
+
