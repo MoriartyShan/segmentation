@@ -200,7 +200,7 @@ class LossManager():
     output_string += ('%d,%f,%f,'%(self.best_epoch, self.loss, self.best_loss))
     iou_len = self.iou.shape[0]
     for i in range(iou_len):
-      output_string += ('%.02f,%.02f,' %(self.iou[i], self.best_iou[i]))
+      output_string += ('%.05f,%.05f,' %(self.iou[i], self.best_iou[i]))
 
     if isinstance(file, str):
       file = open(file, 'a')
