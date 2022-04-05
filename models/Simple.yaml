@@ -1,0 +1,50 @@
+# YOLOv5 🚀 by Ultralytics, GPL-3.0 license
+
+# Parameters
+nc: 80  # number of classes
+depth_multiple: 0.67  # model depth multiple
+width_multiple: 0.75  # layer channel multiple
+anchors:
+  - [10,13, 16,30, 33,23]  # P3/8
+  - [30,61, 62,45, 59,119]  # P4/16
+  - [116,90, 156,198, 373,326]  # P5/32
+
+# YOLOv5 v6.0 backbone
+backbone:
+  # [from, number, module, args]
+  [[-1, 1, Conv, [13, 5, 1]],  # 0-P0
+   [-1, 1, Conv, [27, 3, 2]],  # 1-P1/2
+   [-1, 1, Bottleneck, [27]],
+   [-1, 1, Conv, [53, 3, 2]],  # 3-P2/4
+   [-1, 1, Bottleneck, [53]],
+   [-1, 1, Conv, [107, 3, 2]],  # 5-P3/8
+   [-1, 1, Bottleneck, [107]],
+   [-1, 1, Conv, [211, 3, 2]],  # 7-P4/16
+   [-1, 1, Bottleneck, [211]],
+  ]
+
+# YOLOv5 v6.0 head
+head:
+  [
+   [-1, 1, nn.Upsample, [None, 2, 'nearest']],#9
+   [-1, 1, Conv, [107, 3, 1]],
+   [[-1, 6], 1, Concat, [1]],  # cat backbone P3, 107+107=214
+   [-1, 1, Bottleneck, [318]],  # 12
+
+   [-1, 1, nn.Upsample, [None, 2, 'nearest']],#13
+   [-1, 1, Conv, [53, 3, 1]],
+   [[-1, 4], 1, Concat, [1]],  # cat backbone P2, 53+53=106,(P2/4)
+   [-1, 1, Bottleneck, [371]],  # 16
+
+   [-1, 1, nn.Upsample, [None, 2, 'nearest']],#17
+   [-1, 1, Conv, [27, 3, 1]],
+   [[-1, 2], 1, Concat, [1]],  # cat backbone P1, 27+27=54
+   [-1, 1, Bottleneck, [398]],  # 19 (P4/16-medium)
+
+   [-1, 1, nn.Upsample, [None, 2, 'nearest']],#20
+   [-1, 1, Conv, [13, 3, 1]],
+   [[-1, 0], 1, Concat, [1]],  # cat head P0,13+13=26
+   [-1, 1, Bottleneck, [26]],  # 20 (P5/32-large)
+   [-1, 1, Conv, [1, 1, 1]]
+
+  ]

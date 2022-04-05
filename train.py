@@ -89,9 +89,8 @@ def train(model:torch.nn.Module, data_loader:torch.utils.data.DataLoader, optimi
     optimizer.zero_grad()
     output = model(image)
     '''
-    print("output type %s" %(str(type(output))))
-    print("output type %s" % (str(type(output['out']))))
-    print("output: shape %s, type %s" %(str(output['out'].shape), str(output['out'].dtype)))
+    print("output type %s" % (str(type(output))))
+    print("output: shape %s, type %s" %(str(output.shape), str(output.dtype)))
     print("label: shape %s, type %s" % (str(label.shape), str(label.dtype)))
     '''
     # print("shapes ", output.dtype, label.dtype)

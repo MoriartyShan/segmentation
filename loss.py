@@ -1,6 +1,10 @@
 import torch
-
-
+import time
+def test_time(_model, _x):
+  begin = time.time()
+  y = _model(_x)
+  print('sum y %f' %y['out'][0,0,0,0])
+  print("cost time %f" %(time.time() - begin))
 
 def IOU(output, target, threshold=0.5):
   output = output > threshold
