@@ -131,10 +131,8 @@ class Sample:
     # print('_image.shape ', _image.shape, image.shape)
     image[translate[1]:(translate[1] + _image.shape[0]), translate[0]:(translate[0] + _image.shape[1]), :] = _image
 
-    label = np.zeros(image.shape[0:2], dtype=np.uint8)
-
     segmentations = [(_ * scale[0] + translate).astype(np.int32) for _ in segmentations]
-    image = cv2.fillPoly(image, segmentations, (1.0, 1.0, 1.0))
+    label = cv2.fillPoly(np.zeros(image.shape[0:2], dtype=np.uint8), segmentations, (1.0, 1.0, 1.0))
 
     # _image = image.copy()
     # fillPoly(segmentation, _image, color=(1.0, 1.0, 1.0))
