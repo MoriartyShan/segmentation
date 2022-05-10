@@ -26,25 +26,25 @@ backbone:
 # YOLOv5 v6.0 head
 head:
   [
-   [-1, 1, nn.Upsample, [None, 2, 'nearest']],#9
-   [-1, 1, Conv, [107, 3, 1]],
-   [[-1, 6], 1, Concat, [1]],  # cat backbone P3, 107+107=214
+   [-1, 1, nn.Upsample, [None, 2, 'bilinear']],#9
+#   [-1, 1, Conv, [211, 1, 1]],
+   [[-1, 6], 1, Concat, [1]],  # cat backbone P3, 107+211=318
    [-1, 1, Bottleneck, [318]],  # 12
 
-   [-1, 1, nn.Upsample, [None, 2, 'nearest']],#13
-   [-1, 1, Conv, [53, 3, 1]],
-   [[-1, 4], 1, Concat, [1]],  # cat backbone P2, 53+53=106,(P2/4)
+   [-1, 1, nn.Upsample, [None, 2, 'bilinear']],#13
+#   [-1, 1, Conv, [318, 1, 1]],
+   [[-1, 4], 1, Concat, [1]],  # cat backbone P2, 318+53=371,(P2/4)
    [-1, 1, Bottleneck, [371]],  # 16
 
-   [-1, 1, nn.Upsample, [None, 2, 'nearest']],#17
-   [-1, 1, Conv, [27, 3, 1]],
-   [[-1, 2], 1, Concat, [1]],  # cat backbone P1, 27+27=54
+   [-1, 1, nn.Upsample, [None, 2, 'bilinear']],#17
+#   [-1, 1, Conv, [27, 1, 1]],
+   [[-1, 2], 1, Concat, [1]],  # cat backbone P1, 371+27=398
    [-1, 1, Bottleneck, [398]],  # 19 (P4/16-medium)
 
-   [-1, 1, nn.Upsample, [None, 2, 'nearest']],#20
-   [-1, 1, Conv, [13, 3, 1]],
-   [[-1, 0], 1, Concat, [1]],  # cat head P0,13+13=26
-   [-1, 1, Bottleneck, [26]],  # 20 (P5/32-large)
-   [-1, 1, Conv, [1, 1, 1]]
+   [-1, 1, nn.Upsample, [None, 2, 'bilinear']],#20
+#   [-1, 1, Conv, [13, 1, 1]],
+   [[-1, 0], 1, Concat, [1]],  # cat head P0,398+13=411
+   [-1, 1, Bottleneck, [411]],  # 20 (P5/32-large)
+   [-1, 1, FConv, [1, 1, 1]]
 
   ]
