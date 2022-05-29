@@ -190,6 +190,26 @@ class Dataset(torch.utils.data.Dataset):
     image, label = item.create_label(self.image_size)
     return [image, label]
 
+class CombinedDataset(torch.utils.data.Dataset):
+  def __init__(self, datasets:[torch.utils.data.Dataset]):
+    self.datasets = datasets
+    self.dataset_num = len(self.datasets)
+
+    self.sizes = np.zeros(self.dataset_num+1, dtype=np.int)
+    for i in range(0, self.dataset_num):
+      self.sizes[i+1] = len(self.datasets[i]) + self.sizes[i]
+    print("use combined dataset %s " %(str(self.sizes)))
+  def __len__(self):
+    return self.sizes[-1]
+
+  def __getitem__(self, idx):
+    for i in range(self.dataset_num):
+      if (idx < self.sizes[i+1]):
+        this_idx = idx - self.sizes[i]
+        return self.datasets[i].__getitem__(this_idx)
+    print("invalid input index %d, %d" %(idx, self.sizes[-1]))
+    exit(0)
+
 def filter(dataset:list):
   '''
   only process samples that has one segmentation
@@ -280,4 +300,10 @@ def loadDatasetFromLabelme(data_path:str):
 
   dataset = Dataset(dataset, data_path)
   return dataset
+
+def createDatasetFromList(datalist:[str]):
+  datasets = []
+  for data in datalist:
+    datasets.append(loadDatasetFromLabelme(data))
+  return CombinedDataset(datasets)
 
