@@ -5,8 +5,9 @@ import os
 import copy
 import csv
 import time
+from torch.types import Union
 # import copy
-
+_image_size=(320, 320)
 
 def showAllImages(dataset, src = '/home/moriarty/Datasets/coco/train2017', dst = '/home/moriarty/Datasets/coco/draw'):
   '''
@@ -42,10 +43,36 @@ def draw(polygon, image, color=(0, 0, 255)):
   # cv2.waitKey(0)
 
 class Sample:
-  def __init__(self, data:list):
-    #@data: [id, file_name, height, width, area, [segmentation]]
-    self.data = data[0:5]
-    self.segmentations_ = [np.array(data[5:]).reshape(-1,2)]
+  def __init__(self, data:Union[list, dict], root:str):
+    '''
+    @data: list [id, file_name, height, width, area, [segmentation]]
+           dict[flags, version, shapes, imagePath, imageData, imageHeight, imageWidth]
+    @self.data: [id, file_name, height, width, [area], [segmentation]]
+    '''
+
+    if isinstance(data, list):
+      self.data = data[0:5]
+      self.data[-1] = [self.data[-1]]
+      self.segmentations_ = [np.array(data[5:]).reshape(-1,2)]
+      self.path = os.path.join(root, self.file_name())
+    elif isinstance(data, dict):
+      self.data = [
+        0,
+        os.path.basename(data['imagePath']),
+        data['imageHeight'],
+        data['imageWidth'],
+        []]
+      self.path = os.path.join(root, data['imagePath'])
+      self.segmentations_ = []
+      shapes = data['shapes']
+      for shape in shapes:
+        poly = np.array(shape['points'], dtype=np.float32)
+        self.segmentations_.append(poly)
+        self.data[-1].append(cv2.contourArea(poly))
+
+    else:
+      print("error init sample type %s" %str(type(data)))
+      exit(0)
 
   @staticmethod
   def preprocess_image(image):
@@ -98,13 +125,12 @@ class Sample:
   def segmentations(self):
     return self.segmentations_
 
-  def create_label(self, _new_size, root):
+  def create_label(self, _new_size):
     '''
     @_new_size:(resize current image to (width, height))
     @root: path to image
     '''
-    path = os.path.join(root, self.file_name())
-    image = cv2.imread(path, cv2.IMREAD_COLOR)
+    image = cv2.imread(self.path, cv2.IMREAD_COLOR)
 
     old_size = np.array(self.image_size())
     new_size = np.array(_new_size)
@@ -143,20 +169,46 @@ class Sample:
 
 class Dataset(torch.utils.data.Dataset):
   def __init__(self, dataset:list, path_to_image:str):
-    self.image_size = (320, 320)
+    self.image_size = _image_size
     self.path = copy.deepcopy(path_to_image)
-    self.dataset = {}
     self.size = len(dataset)
+
+    samples = []
+    for data in dataset:
+      samples.append(Sample(data, self.path))
+
+    self.dataset = np.array(samples, dtype=np.object)
+    print('shape ', self.dataset.shape)
+
     for idx, sample in enumerate(dataset):
-      self.dataset[idx] = sample
+      self.dataset[idx] = Sample(sample, self.path)
+
   def __len__(self):
     return self.size
   def __getitem__(self, idx):
-    item = Sample(self.dataset[idx])
-
-    image, label = item.create_label(self.image_size, self.path)
-
+    item = self.dataset[idx]
+    image, label = item.create_label(self.image_size)
     return [image, label]
+
+class CombinedDataset(torch.utils.data.Dataset):
+  def __init__(self, datasets:[torch.utils.data.Dataset]):
+    self.datasets = datasets
+    self.dataset_num = len(self.datasets)
+
+    self.sizes = np.zeros(self.dataset_num+1, dtype=np.int)
+    for i in range(0, self.dataset_num):
+      self.sizes[i+1] = len(self.datasets[i]) + self.sizes[i]
+    print("use combined dataset %s " %(str(self.sizes)))
+  def __len__(self):
+    return self.sizes[-1]
+
+  def __getitem__(self, idx):
+    for i in range(self.dataset_num):
+      if (idx < self.sizes[i+1]):
+        this_idx = idx - self.sizes[i]
+        return self.datasets[i].__getitem__(this_idx)
+    print("invalid input index %d, %d" %(idx, self.sizes[-1]))
+    exit(0)
 
 def filter(dataset:list):
   '''
@@ -215,7 +267,7 @@ def loadDataset(path:str):
   print("Load dataset cost time %f sec" %cost)
   return dataset
 
-def getImagesName(root:str):
+def getFilesName(root:str):
   '''
   @root:path to images
   @return:[names]
@@ -223,13 +275,35 @@ def getImagesName(root:str):
   return os.listdir(root)
 import json
 
-def createDatasetFromLabelme(data:str):
+def loadDatasetFromLabelme(data_path:str):
+  '''
+  return a list contains Dict item
+  @data_path: path to dir contains .json file, which created by labelme
+  version
+  flags
+  shapes
+  imagePath
+  imageData
+  imageHeight
+  imageWidth
+  @return: list of Dict items, do not contain imageData
+  '''
+  dataset = []
+  image_names = getFilesName(data_path)
+  for name in image_names:
+    json_path = os.path.join(data_path, name)
+    with open(json_path, "r") as f:
+      raw_data = json.load(f)
+      raw_data.pop('imageData')
+      dataset.append(raw_data)
 
-  with open(data, "r") as f:
-    row_data = json.load(f)
-  # 读取每一条json数据
 
+  dataset = Dataset(dataset, data_path)
+  return dataset
 
-  for d in row_data:
-    print(d)
+def createDatasetFromList(datalist:[str]):
+  datasets = []
+  for data in datalist:
+    datasets.append(loadDatasetFromLabelme(data))
+  return CombinedDataset(datasets)
 

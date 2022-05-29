@@ -36,7 +36,7 @@ def test(model:torch.nn.Module, data_loader:torch.utils.data.DataLoader,
           compute_loss, epoch, device):
   size = len(data_loader)
 
-  print("num of size %d" %(size))
+  print("num of test size %d" %(size))
 
   show_count = (size - 1) // 10
   show_count = 1 if (show_count == 0) else show_count
@@ -73,7 +73,7 @@ def train(model:torch.nn.Module, data_loader:torch.utils.data.DataLoader, optimi
           compute_loss, epoch, device):
   size = len(data_loader)
 
-  print("num of size %d" %(size))
+  print("num of train size %d" %(size))
 
   show_count = (size - 1) // 10
   show_count = 1 if (show_count == 0) else show_count
@@ -226,12 +226,17 @@ def main():
   print("random seed %d" % seed)
   random.seed(seed)
   torch.manual_seed(seed)
+  if (False):
+    dataset_path = '/home/moriarty/Projects/x.csv'
+    image_path = '/home/moriarty/Datasets/coco/train2017'
+    dataset = loadDataset(dataset_path)
+    dataset = filter(dataset)
+    dataset = Dataset(dataset, image_path)
+  else:
+    dataset_path = ['/home/moriarty/Datasets/wound/s1/labels',
+                    '/home/moriarty/Datasets/wound/s2/labels']
+    dataset = createDatasetFromList(dataset_path)
 
-  dataset_path = '/home/moriarty/Projects/x.csv'
-  image_path = '/home/moriarty/Datasets/coco/train2017'
-  dataset = loadDataset(dataset_path)
-  dataset = filter(dataset)
-  dataset = Dataset(dataset, image_path)
   size = len(dataset)
   train_size = int(0.9 * size)
 
@@ -290,7 +295,7 @@ def main():
   for epoch in range(epochs):
     begin = time.time()
     tr_result = train(model, trloader, optimizer, compute_loss, epoch, device)
-    te_result = test(model, trloader, compute_loss, epoch, device)
+    te_result = test(model, teloader, compute_loss, epoch, device)
 
     if (test_loss.update(te_result[0], te_result[1], epoch)):
       torch.save(model, os.path.join(runtime_path, 'best_test.pt'))
