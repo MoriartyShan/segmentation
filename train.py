@@ -226,12 +226,16 @@ def main():
   print("random seed %d" % seed)
   random.seed(seed)
   torch.manual_seed(seed)
+  if (False):
+    dataset_path = '/home/moriarty/Projects/x.csv'
+    image_path = '/home/moriarty/Datasets/coco/train2017'
+    dataset = loadDataset(dataset_path)
+    dataset = filter(dataset)
+    dataset = Dataset(dataset, image_path)
+  else:
+    dataset_path = '/home/moriarty/Datasets/wound/s1/labels'
+    dataset = loadDatasetFromLabelme(dataset_path)
 
-  dataset_path = '/home/moriarty/Projects/x.csv'
-  image_path = '/home/moriarty/Datasets/coco/train2017'
-  dataset = loadDataset(dataset_path)
-  dataset = filter(dataset)
-  dataset = Dataset(dataset, image_path)
   size = len(dataset)
   train_size = int(0.9 * size)
 
