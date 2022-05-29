@@ -5,12 +5,10 @@ import torch
 import time
 import random
 import cv2
+import models.model as mm
 
 import dataset
 from loss import *
-
-
-
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -66,8 +64,9 @@ def main():
     exit(0)
   else:
     print("loading weight from %s" %args.weights)
-    model = torch.load(args.weights, map_location = device)
-
+    model = mm.TorchNet()
+    model.load_state_dict(torch.load('test.pt', map_location = device))
+    # model = torch.load(args.weights, map_location = device)
 
   model = model.to(device)
 

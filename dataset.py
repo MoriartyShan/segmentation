@@ -5,6 +5,7 @@ import os
 import copy
 import csv
 import time
+# import copy
 
 
 def showAllImages(dataset, src = '/home/moriarty/Datasets/coco/train2017', dst = '/home/moriarty/Datasets/coco/draw'):
@@ -23,14 +24,9 @@ def showAllImages(dataset, src = '/home/moriarty/Datasets/coco/train2017', dst =
 
     cv2.imwrite(img_path, image)
 
-def fillPoly(polygon, image, color=(1, 1, 1)):
-  if isinstance(polygon, list):
-    polygon = np.array([polygon], dtype=np.int32)
-  if (polygon.ndim != 3):
-    polygon = polygon.reshape((1, -1, 2))
-  if (polygon.dtype != np.int32):
-    polygon = polygon.astype(np.int32)
-  image = cv2.fillPoly(image, polygon, color)
+def fillPoly(polygons, image, color=(1, 1, 1)):
+  polygons = [_.astype(np.int32) for _ in polygons]
+  image = cv2.fillPoly(image, polygons, color)
   return image
 
 def draw(polygon, image, color=(0, 0, 255)):
@@ -48,13 +44,16 @@ def draw(polygon, image, color=(0, 0, 255)):
 class Sample:
   def __init__(self, data:list):
     #@data: [id, file_name, height, width, area, [segmentation]]
-    self.data = data
+    self.data = data[0:5]
+    self.segmentations_ = [np.array(data[5:]).reshape(-1,2)]
+
   @staticmethod
   def preprocess_image(image):
     '''
     @image: read with cv2, [h, w, 3]
     '''
-    return (image.astype(dtype=np.float32).transpose(2, 0, 1) / (255.0 / 2)) - 1.0
+    # return (image.astype(dtype=np.float32).transpose(2, 0, 1) / (255.0 / 2)) - 1.0
+    return (image.astype(dtype=np.float32).transpose(2, 0, 1) / (255.0))
 
   @staticmethod
   def draw_segmentation(image:np.ndarray, label:np.ndarray, threshold=0.5):
@@ -96,8 +95,9 @@ class Sample:
     return (self.data[3], self.data[2])
   def segment_area(self):
     return self.data[4]
-  def segmentation(self):
-    return self.data[5:]
+  def segmentations(self):
+    return self.segmentations_
+
   def create_label(self, _new_size, root):
     '''
     @_new_size:(resize current image to (width, height))
@@ -109,7 +109,7 @@ class Sample:
     old_size = np.array(self.image_size())
     new_size = np.array(_new_size)
 
-    segmentation = np.array(self.segmentation()).reshape(-1, 2)
+    segmentations = copy.deepcopy(self.segmentations())
 
     #resize
     scale = new_size / old_size
@@ -119,7 +119,6 @@ class Sample:
       scale[0] = scale[1]
     size = (scale[0] * old_size.astype(scale.dtype)).astype(np.int32)
 
-    segmentation *= scale[0]
     # print("resize image from, ", old_size, "=>", size, image.shape, self.file_name())
     _image = cv2.resize(image, (size[0], size[1]), interpolation=cv2.INTER_LINEAR)
 
@@ -128,14 +127,12 @@ class Sample:
     translate = (to_center - current_center).astype(np.int32)
     # print("current_center,", current_center, ",to_center,", to_center, 'translate', translate)
 
-    segmentation += translate
-
     image = np.zeros((_new_size[1], _new_size[0], 3), dtype=np.float32)
     # print('_image.shape ', _image.shape, image.shape)
     image[translate[1]:(translate[1] + _image.shape[0]), translate[0]:(translate[0] + _image.shape[1]), :] = _image
 
-    label = np.zeros(image.shape[0:2], dtype=np.uint8)
-    fillPoly(segmentation, label, color=(1.0, 1.0, 1.0))
+    segmentations = [(_ * scale[0] + translate).astype(np.int32) for _ in segmentations]
+    label = cv2.fillPoly(np.zeros(image.shape[0:2], dtype=np.uint8), segmentations, (1.0, 1.0, 1.0))
 
     # _image = image.copy()
     # fillPoly(segmentation, _image, color=(1.0, 1.0, 1.0))
@@ -159,11 +156,11 @@ class Dataset(torch.utils.data.Dataset):
 
     image, label = item.create_label(self.image_size, self.path)
 
-
     return [image, label]
 
 def filter(dataset:list):
   '''
+  only process samples that has one segmentation
   @dataset:[[id, file_name, height, width, area, [segmentation]], ...,]
   '''
   ndataset = []
@@ -179,7 +176,8 @@ def filter(dataset:list):
       continue
 
     #do not too close to edge of image
-    segmentation = np.array(sample.segmentation()).reshape(-1, 2)
+    #only process samples that has one segmentation
+    segmentation = sample.segmentations()[0]
     invalid = (segmentation[:, 0] < edge) | (segmentation[:, 0] > (shape[0] - edge)) | (segmentation[:, 1] < edge) | (segmentation[:, 0] > (shape[1] - edge))
     if (np.sum(invalid) > 2):
       continue
@@ -223,4 +221,15 @@ def getImagesName(root:str):
   @return:[names]
   '''
   return os.listdir(root)
+import json
+
+def createDatasetFromLabelme(data:str):
+
+  with open(data, "r") as f:
+    row_data = json.load(f)
+  # 读取每一条json数据
+
+
+  for d in row_data:
+    print(d)
 
