@@ -83,7 +83,6 @@ def main():
     # output = torch.sigmoid(model(preprocessed)['out']).squeeze(dim=0).squeeze(dim=0)
     print("shape %s" %str(output.shape))
 
-
     prefix = name.split('.')[0]
 
     for i in range(3):

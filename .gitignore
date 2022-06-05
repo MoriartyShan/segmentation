@@ -1,4 +1,5 @@
 *.pt
+*.png
 
 #idea and python
 __pycache__/*

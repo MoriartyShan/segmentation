@@ -9,6 +9,20 @@ from torch.types import Union
 # import copy
 _image_size=(320, 320)
 
+import filecmp
+
+def filterSameFiles(pathA:str, pathB:str):
+  namesA = getFilesName(pathA)
+  namesB = getFilesName(pathB)
+  theSame = []
+  for A in namesA:
+    pA = os.path.join(pathA, A)
+    for B in namesB:
+      pB = os.path.join(pathB, B)
+      if (filecmp.cmp(pA, pB)):
+        theSame.append((A, B))
+  return theSame
+
 def showAllImages(dataset, src = '/home/moriarty/Datasets/coco/train2017', dst = '/home/moriarty/Datasets/coco/draw'):
   '''
   @dataset:[[id, file_name, height, width, area, [segmentation]], ...,]
@@ -125,7 +139,7 @@ class Sample:
   def segmentations(self):
     return self.segmentations_
 
-  def create_label(self, _new_size):
+  def create_label(self, _new_size = None):
     '''
     @_new_size:(resize current image to (width, height))
     @root: path to image
@@ -133,6 +147,9 @@ class Sample:
     image = cv2.imread(self.path, cv2.IMREAD_COLOR)
 
     old_size = np.array(self.image_size())
+
+    if (_new_size is None):
+      _new_size = old_size
     new_size = np.array(_new_size)
 
     segmentations = copy.deepcopy(self.segmentations())
@@ -146,26 +163,27 @@ class Sample:
     size = (scale[0] * old_size.astype(scale.dtype)).astype(np.int32)
 
     # print("resize image from, ", old_size, "=>", size, image.shape, self.file_name())
-    _image = cv2.resize(image, (size[0], size[1]), interpolation=cv2.INTER_LINEAR)
+    resized_image = cv2.resize(image, (size[0], size[1]), interpolation=cv2.INTER_LINEAR)
+    # print("resized_image image type ", image.dtype)
 
     current_center = size / 2
     to_center = new_size / 2
     translate = (to_center - current_center).astype(np.int32)
     # print("current_center,", current_center, ",to_center,", to_center, 'translate', translate)
 
-    image = np.zeros((_new_size[1], _new_size[0], 3), dtype=np.float32)
-    # print('_image.shape ', _image.shape, image.shape)
-    image[translate[1]:(translate[1] + _image.shape[0]), translate[0]:(translate[0] + _image.shape[1]), :] = _image
+    new_size_image = np.zeros((_new_size[1], _new_size[0], 3), dtype=np.float32)
+    # print('resized_image.shape ', resized_image.shape, new_size_image.shape)
+    new_size_image[translate[1]:(translate[1] + resized_image.shape[0]), translate[0]:(translate[0] + resized_image.shape[1]), :] = resized_image
 
     segmentations = [(_ * scale[0] + translate).astype(np.int32) for _ in segmentations]
-    label = cv2.fillPoly(np.zeros(image.shape[0:2], dtype=np.uint8), segmentations, (1.0, 1.0, 1.0))
-
-    # _image = image.copy()
-    # fillPoly(segmentation, _image, color=(1.0, 1.0, 1.0))
-
-    image = Sample.preprocess_image(image)
-    return image, np.expand_dims(label, axis=0).astype(np.float32)
-
+    label = cv2.fillPoly(np.zeros(new_size_image.shape[0:2], dtype=np.uint8), segmentations, (1.0, 1.0, 1.0))
+    preprocessed_image = Sample.preprocess_image(new_size_image)
+    return preprocessed_image, np.expand_dims(label, axis=0).astype(np.float32), new_size_image
+  def show_label(self, size = None):
+    preprocessed_image, label, image = self.create_label(size)
+    image = image.astype(np.uint8)
+    draw = Sample.draw_segmentation(image, label[0], 0.5)
+    return draw
 
 class Dataset(torch.utils.data.Dataset):
   def __init__(self, dataset:list, path_to_image:str):
@@ -187,8 +205,8 @@ class Dataset(torch.utils.data.Dataset):
     return self.size
   def __getitem__(self, idx):
     item = self.dataset[idx]
-    image, label = item.create_label(self.image_size)
-    return [image, label]
+    preprocessed_image, label, image = item.create_label(self.image_size)
+    return [preprocessed_image, label]
 
 class CombinedDataset(torch.utils.data.Dataset):
   def __init__(self, datasets:[torch.utils.data.Dataset]):

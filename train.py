@@ -233,8 +233,10 @@ def main():
     dataset = filter(dataset)
     dataset = Dataset(dataset, image_path)
   else:
-    dataset_path = ['/home/moriarty/Datasets/wound/s1/labels',
-                    '/home/moriarty/Datasets/wound/s2/labels']
+    dataset_path = [#'/home/moriarty/Datasets/wound/s1/labels',
+                    '/home/moriarty/Datasets/wound/s2/labels',
+                    '/home/moriarty/Datasets/wound/s3/labels',
+                    '/home/moriarty/Datasets/wound/s4/labels']
     dataset = createDatasetFromList(dataset_path)
 
   size = len(dataset)
@@ -264,7 +266,7 @@ def main():
     num_workers=4,
     collate_fn=None,
     pin_memory=True,
-    drop_last=True,
+    drop_last=False,
     timeout=0,
     worker_init_fn=None,
     prefetch_factor=4,
@@ -279,7 +281,7 @@ def main():
     num_workers=4,
     collate_fn=None,
     pin_memory=True,
-    drop_last=True,
+    drop_last=False,
     timeout=0,
     worker_init_fn=None,
     prefetch_factor=4,
