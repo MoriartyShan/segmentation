@@ -47,7 +47,7 @@ def main():
   torch.set_default_dtype(default_type)
 
   root = args.data
-  max_size = (320, 320) #height, width
+  max_size = (2048, 1024)#dataset._image_size #height, width
 
   device = torch.device(args.device)
   seed = args.seed
@@ -65,8 +65,8 @@ def main():
   else:
     print("loading weight from %s" %args.weights)
     model = mm.TorchNet()
-    model.load_state_dict(torch.load('test.pt', map_location = device))
-    # model = torch.load(args.weights, map_location = device)
+    # model.load_state_dict(torch.load('test.pt', map_location = device))
+    model = torch.load(args.weights, map_location = device)
 
   model = model.to(device)
 

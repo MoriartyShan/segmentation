@@ -7,7 +7,7 @@ import csv
 import time
 from torch.types import Union
 # import copy
-_image_size=(320, 320)
+_image_size=(1024, 512) #width, height
 
 import filecmp
 
@@ -63,7 +63,7 @@ class Sample:
            dict[flags, version, shapes, imagePath, imageData, imageHeight, imageWidth]
     @self.data: [id, file_name, height, width, [area], [segmentation]]
     '''
-
+    self.rotate_flag = 0
     if isinstance(data, list):
       self.data = data[0:5]
       self.data[-1] = [self.data[-1]]
@@ -81,6 +81,7 @@ class Sample:
       shapes = data['shapes']
       for shape in shapes:
         poly = np.array(shape['points'], dtype=np.float32)
+        # print("poly shape", poly.shape)
         self.segmentations_.append(poly)
         self.data[-1].append(cv2.contourArea(poly))
 
@@ -94,7 +95,7 @@ class Sample:
     @image: read with cv2, [h, w, 3]
     '''
     # return (image.astype(dtype=np.float32).transpose(2, 0, 1) / (255.0 / 2)) - 1.0
-    return (image.astype(dtype=np.float32).transpose(2, 0, 1) / (255.0))
+    return (image.astype(dtype=np.float32).transpose(2, 0, 1) / (127.5)) - 1.0
 
   @staticmethod
   def draw_segmentation(image:np.ndarray, label:np.ndarray, threshold=0.5):
@@ -139,20 +140,48 @@ class Sample:
   def segmentations(self):
     return self.segmentations_
 
+  def segmentations_ratio(self):
+    segs = np.concatenate(self.segmentations(), axis=0)
+    hull = cv2.convexHull(segs, returnPoints=True)
+    contour_area = cv2.contourArea(hull)
+    image_area = self.image_size()[0] * self.image_size()[1]
+    return contour_area/image_area
+
+  def rotate(self, segmentations, image):
+    if (self.rotate_flag > 0):
+      width, height = self.image_size()
+      for i in range(self.rotate_flag):
+        for segmentation in segmentations:
+          x, y = height - segmentation[:, 1] - 1, copy.deepcopy(segmentation[:, 0])
+          segmentation[:, 0] = x
+          segmentation[:, 1] = y
+        width, height = height, width
+      '''
+      cv2.ROTATE_90_CLOCKWISE, 0
+      cv2.ROTATE_180, 1
+      cv2.ROTATE_90_COUNTERCLOCKWISE, 2
+      '''
+      image = cv2.rotate(image, self.rotate_flag - 1)
+    self.rotate_flag += 1
+    if self.rotate_flag == 4:
+      self.rotate_flag = 0
+    return segmentations, image
+
   def create_label(self, _new_size = None):
     '''
     @_new_size:(resize current image to (width, height))
     @root: path to image
     '''
     image = cv2.imread(self.path, cv2.IMREAD_COLOR)
+    segmentations = copy.deepcopy(self.segmentations())
 
-    old_size = np.array(self.image_size())
+    segmentations, image = self.rotate(segmentations, image)
+
+    old_size = np.array([image.shape[1], image.shape[0]])
 
     if (_new_size is None):
       _new_size = old_size
     new_size = np.array(_new_size)
-
-    segmentations = copy.deepcopy(self.segmentations())
 
     #resize
     scale = new_size / old_size
@@ -207,6 +236,8 @@ class Dataset(torch.utils.data.Dataset):
     item = self.dataset[idx]
     preprocessed_image, label, image = item.create_label(self.image_size)
     return [preprocessed_image, label]
+  def get_sample(self, idx):
+    return self.dataset[idx]
 
 class CombinedDataset(torch.utils.data.Dataset):
   def __init__(self, datasets:[torch.utils.data.Dataset]):
@@ -226,6 +257,14 @@ class CombinedDataset(torch.utils.data.Dataset):
         this_idx = idx - self.sizes[i]
         return self.datasets[i].__getitem__(this_idx)
     print("invalid input index %d, %d" %(idx, self.sizes[-1]))
+    exit(0)
+
+  def get_sample(self, idx):
+    for i in range(self.dataset_num):
+      if (idx < self.sizes[i + 1]):
+        this_idx = idx - self.sizes[i]
+        return self.datasets[i].get_sample(this_idx)
+    print("invalid input index %d, %d" % (idx, self.sizes[-1]))
     exit(0)
 
 def filter(dataset:list):
@@ -322,6 +361,16 @@ def loadDatasetFromLabelme(data_path:str):
 def createDatasetFromList(datalist:[str]):
   datasets = []
   for data in datalist:
+    print("path ", data)
     datasets.append(loadDatasetFromLabelme(data))
   return CombinedDataset(datasets)
+
+def test(sample:Sample):
+  for i in range(9):
+    show = sample.show_label()
+    cv2.imwrite("show_" + str(i) + ".png", show)
+    sample.create_label()
+
+
+
 

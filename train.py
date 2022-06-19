@@ -233,14 +233,15 @@ def main():
     dataset = filter(dataset)
     dataset = Dataset(dataset, image_path)
   else:
-    dataset_path = [#'/home/moriarty/Datasets/wound/s1/labels',
+    dataset_path = ['/home/moriarty/Datasets/wound/s1/labels',
                     '/home/moriarty/Datasets/wound/s2/labels',
                     '/home/moriarty/Datasets/wound/s3/labels',
                     '/home/moriarty/Datasets/wound/s4/labels']
-    dataset = createDatasetFromList(dataset_path)
+    teset = createDatasetFromList([dataset_path[0]])
+    trset = createDatasetFromList(dataset_path[1:])
 
-  size = len(dataset)
-  train_size = int(0.9 * size)
+  # size = len(dataset)
+  # train_size = len(trset)
 
   if len(args.weights) == 0:
     model = TorchNet()  # create
@@ -252,10 +253,10 @@ def main():
   model = model.to(device)
   compute_loss = Loss.MultipleLoss()
 
-  trset, teset,ddd = torch.utils.data.random_split(
-    dataset,
-    [train_size, size - train_size, 0],
-    generator=torch.Generator().manual_seed(42))
+  # trset, teset,ddd = torch.utils.data.random_split(
+  #   dataset,
+  #   [train_size, size - train_size, 0],
+  #   generator=torch.Generator().manual_seed(42))
 
   trloader = torch.utils.data.DataLoader(
     trset,
@@ -274,7 +275,7 @@ def main():
 
   teloader = torch.utils.data.DataLoader(
     teset,
-    batch_size=batch_size,
+    batch_size=1,
     shuffle=True,
     sampler=None,
     batch_sampler=None,
@@ -293,7 +294,7 @@ def main():
   test_loss = LossManager(False)
 
   train_loss.init_file(runtime_path + '/result.csv')
-
+  te_result = test(model, teloader, compute_loss, -1, device)
   for epoch in range(epochs):
     begin = time.time()
     tr_result = train(model, trloader, optimizer, compute_loss, epoch, device)
