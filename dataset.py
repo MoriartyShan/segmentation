@@ -6,8 +6,9 @@ import copy
 import csv
 import time
 from torch.types import Union
+import torchvision
 # import copy
-_image_size=(1024, 512) #width, height
+_image_size=(1024, 1024) #width, height
 
 import filecmp
 
@@ -95,7 +96,13 @@ class Sample:
     @image: read with cv2, [h, w, 3]
     '''
     # return (image.astype(dtype=np.float32).transpose(2, 0, 1) / (255.0 / 2)) - 1.0
-    return (image.astype(dtype=np.float32).transpose(2, 0, 1) / (127.5)) - 1.0
+    image = torch.from_numpy(image.astype(dtype=np.float32).transpose(2, 0, 1))
+    # print("image shape", image.shape)
+    # print("image shape", image.shape, torch.max(image), torch.min(image))
+    image = torchvision.transforms.functional.normalize(image, mean=(0.485, 0.456, 0.406),
+                                   std=(0.229, 0.224, 0.225))
+
+    return image.numpy()
 
   @staticmethod
   def draw_segmentation(image:np.ndarray, label:np.ndarray, threshold=0.5):
@@ -193,7 +200,8 @@ class Sample:
 
     # print("resize image from, ", old_size, "=>", size, image.shape, self.file_name())
     resized_image = cv2.resize(image, (size[0], size[1]), interpolation=cv2.INTER_LINEAR)
-    # print("resized_image image type ", image.dtype)
+    resized_image = Sample.preprocess_image(resized_image).transpose(1, 2, 0)
+    # print("resized_image image type ", resized_image.shape)
 
     current_center = size / 2
     to_center = new_size / 2
@@ -206,8 +214,8 @@ class Sample:
 
     segmentations = [(_ * scale[0] + translate).astype(np.int32) for _ in segmentations]
     label = cv2.fillPoly(np.zeros(new_size_image.shape[0:2], dtype=np.uint8), segmentations, (1.0, 1.0, 1.0))
-    preprocessed_image = Sample.preprocess_image(new_size_image)
-    return preprocessed_image, np.expand_dims(label, axis=0).astype(np.float32), new_size_image
+    # preprocessed_image = Sample.preprocess_image(new_size_image)
+    return new_size_image.transpose(2, 0, 1), np.expand_dims(label, axis=0).astype(np.float32), new_size_image
   def show_label(self, size = None):
     preprocessed_image, label, image = self.create_label(size)
     image = image.astype(np.uint8)

@@ -34,40 +34,41 @@ def createTrainPath():
 
 def test(model:torch.nn.Module, data_loader:torch.utils.data.DataLoader,
           compute_loss, epoch, device):
-  size = len(data_loader)
+  with torch.no_grad():
+    size = len(data_loader)
 
-  print("num of test size %d" %(size))
+    print("num of test size %d" %(size))
 
-  show_count = (size - 1) // 10
-  show_count = 1 if (show_count == 0) else show_count
-  show_count = 100 if (show_count > 100) else show_count
-  total_loss = 0.0
-  total_iou = 0.0
-  model.eval()
-  epoch_begin = time.time()
-  for index, batch_data in enumerate(data_loader):
-    image = batch_data[0].to(device)
-    label = batch_data[1].to(device)
+    show_count = (size - 1) // 10
+    show_count = 1 if (show_count == 0) else show_count
+    show_count = 100 if (show_count > 100) else show_count
+    total_loss = 0.0
+    total_iou = 0.0
+    model.eval()
+    epoch_begin = time.time()
+    for index, batch_data in enumerate(data_loader):
+      image = batch_data[0].to(device)
+      label = batch_data[1].to(device)
 
-    output = model(image)
-    bce, iou = compute_loss(output, label)
+      output = model(image)
+      bce, iou = compute_loss(output, label)
 
-    total_iou += iou.data
-    total_loss += bce.data
+      total_iou += iou.data
+      total_loss += bce.data
 
-    if ((index % show_count) == 0):
-      num = index + 1
-      cost = time.time() - epoch_begin
-      print('test %d in ep %d %0.2f%%, mean loss %.04f, current loss %.04f, '
-            'mean iou %.04f, current iou %.04f, cost %.02f sec, left %.02f sec' % (
-        index, epoch, 100.0 * num / size, total_loss / num, bce.data,
-        total_iou[-1] / num, iou.data[-1],
-        cost, cost / num * (size - num)))
-  cost = time.time() - epoch_begin
-  print('test epoch %d finished, test %d samples, mean loss %.04f,'
-        ' mean iou %.04f, cost time %.02f sec' % (
-    epoch, size, total_loss / size, total_iou[-1] / size, cost))
-  return total_loss / size, total_iou / size, cost
+      if ((index % show_count) == 0):
+        num = index + 1
+        cost = time.time() - epoch_begin
+        print('test %d in ep %d %0.2f%%, mean loss %.04f, current loss %.04f, '
+              'mean iou %.04f, current iou %.04f, cost %.02f sec, left %.02f sec' % (
+          index, epoch, 100.0 * num / size, total_loss / num, bce.data,
+          total_iou[-1] / num, iou.data[-1],
+          cost, cost / num * (size - num)))
+    cost = time.time() - epoch_begin
+    print('test epoch %d finished, test %d samples, mean loss %.04f,'
+          ' mean iou %.04f, cost time %.02f sec' % (
+      epoch, size, total_loss / size, total_iou[-1] / size, cost))
+    return total_loss / size, total_iou / size, cost
 
 def train(model:torch.nn.Module, data_loader:torch.utils.data.DataLoader, optimizer,
           compute_loss, epoch, device):
@@ -85,6 +86,7 @@ def train(model:torch.nn.Module, data_loader:torch.utils.data.DataLoader, optimi
   for index, batch_data in enumerate(data_loader):
     image = batch_data[0].to(device)
     label = batch_data[1].to(device)
+    # print("image shape", image.shape, torch.max(image), torch.min(image))
 
     optimizer.zero_grad()
     output = model(image)
@@ -275,7 +277,7 @@ def main():
 
   teloader = torch.utils.data.DataLoader(
     teset,
-    batch_size=1,
+    batch_size=batch_size*2,
     shuffle=True,
     sampler=None,
     batch_sampler=None,
@@ -294,7 +296,7 @@ def main():
   test_loss = LossManager(False)
 
   train_loss.init_file(runtime_path + '/result.csv')
-  te_result = test(model, teloader, compute_loss, -1, device)
+  # te_result = test(model, teloader, compute_loss, -1, device)
   for epoch in range(epochs):
     begin = time.time()
     tr_result = train(model, trloader, optimizer, compute_loss, epoch, device)
