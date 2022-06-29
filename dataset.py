@@ -56,7 +56,9 @@ def draw(polygon, image, color=(0, 0, 255)):
   return cv2.polylines(image, polygon, True, color, thickness=3)
   # cv2.imshow('image', image)
   # cv2.waitKey(0)
-
+to_tensor = torchvision.transforms.ToTensor()
+normalize = torchvision.transforms.Normalize(mean=(0.485, 0.456, 0.406),
+                                   std=(0.229, 0.224, 0.225))
 class Sample:
   def __init__(self, data:Union[list, dict], root:str):
     '''
@@ -96,11 +98,11 @@ class Sample:
     @image: read with cv2, [h, w, 3]
     '''
     # return (image.astype(dtype=np.float32).transpose(2, 0, 1) / (255.0 / 2)) - 1.0
-    image = torch.from_numpy(image.astype(dtype=np.float32).transpose(2, 0, 1))
+    # image = torch.from_numpy(image.astype(dtype=np.float32).transpose(2, 0, 1))
     # print("image shape", image.shape)
     # print("image shape", image.shape, torch.max(image), torch.min(image))
-    image = torchvision.transforms.functional.normalize(image, mean=(0.485, 0.456, 0.406),
-                                   std=(0.229, 0.224, 0.225))
+    image = to_tensor(image)
+    image = normalize(image)
 
     return image.numpy()
 
