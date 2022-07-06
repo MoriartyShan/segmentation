@@ -71,24 +71,26 @@ def main():
   model = model.to(device)
 
   model.eval()
-  for name in images:
-    image = cv2.imread(os.path.join(root, name), cv2.IMREAD_COLOR)
+  with torch.no_grad():
+    for name in images:
+      begin = time.time()
+      image = cv2.imread(os.path.join(root, name), cv2.IMREAD_COLOR)
 
-    new_size = dataset.Sample.get_new_size(image.shape[0:2], max_size)
-    image = cv2.resize(image, (new_size[1], new_size[0]))
+      new_size = dataset.Sample.get_new_size(image.shape[0:2], max_size)
+      image = cv2.resize(image, (new_size[1], new_size[0]))
 
-    preprocessed = dataset.Sample.preprocess_image(image)
-    preprocessed = torch.from_numpy(preprocessed).to(device).unsqueeze(dim=0)
-    output = model(preprocessed).squeeze(dim=0).squeeze(dim=0)
-    # output = torch.sigmoid(model(preprocessed)['out']).squeeze(dim=0).squeeze(dim=0)
-    print("shape %s" %str(output.shape))
+      preprocessed = dataset.Sample.preprocess_image(image)
+      preprocessed = torch.from_numpy(preprocessed).to(device).unsqueeze(dim=0)
+      output = model(preprocessed).squeeze(dim=0).squeeze(dim=0)
+      # output = torch.sigmoid(model(preprocessed)['out']).squeeze(dim=0).squeeze(dim=0)
+      print("shape %s" %str(output.shape))
 
-    prefix = name.split('.')[0]
+      prefix = name.split('.')[0]
 
-    for i in range(3):
-      threshold = 0.5 + i * 0.2
-      overlaped = dataset.Sample.draw_segmentation(copy.deepcopy(image), output, threshold)
-      cv2.imwrite(os.path.join(runtime_path, prefix + '_' + str(threshold) + '.png'), overlaped)
-
+      for i in range(3):
+        threshold = 0.5 + i * 0.2
+        overlaped = dataset.Sample.draw_segmentation(copy.deepcopy(image), output, threshold)
+        cv2.imwrite(os.path.join(runtime_path, prefix + '_' + str(threshold) + '.png'), overlaped)
+      print("cost time ", time.time() - begin, "sec")
 
 main()

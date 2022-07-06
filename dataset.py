@@ -112,7 +112,7 @@ class Sample:
     @image: h, w, 3
     @label: h, w
     '''
-    x = label > threshold
+    x = (label > threshold).cpu().numpy()
     image[x, 0] = 255
     print("num of segmentation is %d" %x.sum())
     return image
